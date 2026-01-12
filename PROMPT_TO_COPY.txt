@@ -1,0 +1,53 @@
+ПРОДОЛЖЕНИЕ РАБОТЫ НАД ПРОЕКТОМ ERKNM - РОБОТ СБОРА ДАННЫХ ФГИС ЕРКНМ
+
+ПРОБЛЕМА:
+При массовой загрузке мета-XML файлов сервер принудительно разрывает соединения:
+- ConnectionResetError(10054, 'Удаленный хост принудительно разорвал существующее подключение')
+- Прямые HTTP-запросы через requests.get() блокируются сервером
+
+ЧТО РАБОТАЕТ:
+✅ Скачивание list.xml через Playwright (erknm/browser/downloader.py) - работает отлично
+✅ Парсинг list.xml - работает
+✅ База данных PostgreSQL - настроена
+✅ Веб-интерфейс на http://localhost:5000 - работает
+
+ЧТО НЕ РАБОТАЕТ:
+❌ Скачивание мета-XML файлов через requests.get() в erknm/parser/meta_parser.py
+❌ Сервер блокирует прямые HTTP-запросы
+
+ЗАДАЧА:
+Переделать скачивание мета-XML файлов с использования requests на браузерную автоматизацию через Playwright, аналогично тому, как это сделано для list.xml.
+
+ТРЕБОВАНИЯ:
+1. Создать erknm/browser/meta_downloader.py для скачивания мета-XML через Playwright
+2. Изменить erknm/parser/meta_parser.py - убрать requests.get, использовать Playwright
+3. Имитировать человеческое поведение:
+   - Открыть страницу с мета-XML URL
+   - Дождаться загрузки (wait_for_load_state("networkidle"))
+   - Скачать файл через браузер (page.expect_download или через content)
+   - Задержки 3-5 секунд между запросами
+4. Добавить retry механизм для ошибок браузера
+5. Сохранить существующую логику в erknm/sync/synchronizer.py
+
+СТРУКТУРА ПРОЕКТА:
+- erknm/browser/downloader.py - РАБОТАЮЩИЙ пример для list.xml (использовать как образец)
+- erknm/parser/meta_parser.py - нужно переделать download_meta_xml()
+- erknm/sync/synchronizer.py - использует download_meta_xml()
+
+URL МЕТА-XML (примеры):
+https://proverki.gov.ru/blob/opendata/7710146102-inspection-2025-9.xml
+https://proverki.gov.ru/blob/opendata/7710146102-plan-2025.xml
+
+ВАЖНО:
+- Playwright уже установлен и работает
+- Нужно имитировать человеческое поведение, не делать прямые запросы
+- Добавить задержки между запросами (3-5 секунд)
+- Обработать ошибки и добавить retry
+- Использовать headless режим браузера
+
+ТЕХНИЧЕСКИЕ ДЕТАЛИ:
+- Python 3.13
+- Playwright 1.57.0
+- Все зависимости установлены
+- База данных настроена (DATABASE_URL=postgresql://erknm_user:erknm_pass@localhost:5432/erknm)
+

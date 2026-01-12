@@ -1,0 +1,47 @@
+ПРОДОЛЖЕНИЕ РАБОТЫ НАД ПРОЕКТОМ ERKNM - ИСПРАВЛЕНИЕ ОШИБКИ БД
+
+КОНТЕКСТ:
+Разрабатывается робот сбора и инкрементальной загрузки открытых данных ФГИС ЕРКНМ в PostgreSQL. Проект на Python с использованием Playwright для браузерной автоматизации.
+
+ТЕКУЩАЯ ПРОБЛЕМА:
+Ошибка при запуске синхронизации:
+ОШИБКА: столбец "stop_requested" не существует
+LINE 2: SELECT stop_requested FROM sync_runs WHERE id = ...
+
+ПРИЧИНА:
+В коде была добавлена функциональность остановки синхронизации, которая требует колонку stop_requested в таблице sync_runs. База данных была инициализирована ДО добавления этой колонки, и функция init_schema() не добавляет колонки в существующие таблицы.
+
+ЧТО УЖЕ СДЕЛАНО:
+1. ✅ Добавлена колонка stop_requested в схему таблицы sync_runs
+2. ✅ Обновлен init_schema() для добавления колонки в существующие таблицы
+3. ✅ Создан скрипт check_column.py для проверки и добавления колонки
+4. ✅ Добавлены методы SyncRun.request_stop() и SyncRun.is_stop_requested()
+5. ✅ Добавлен API endpoint /api/sync/stop
+6. ✅ Добавлена кнопка "Остановить синхронизацию" в веб-интерфейс
+
+ЗАДАЧА:
+Исправить ошибку с отсутствующей колонкой stop_requested в таблице sync_runs.
+
+РЕШЕНИЕ:
+1. Выполнить скрипт: python check_column.py (добавит колонку если её нет)
+2. ИЛИ выполнить SQL: ALTER TABLE sync_runs ADD COLUMN IF NOT EXISTS stop_requested BOOLEAN NOT NULL DEFAULT FALSE;
+3. Убедиться, что init_schema() вызывается и корректно добавляет колонку для существующих таблиц
+
+ФАЙЛЫ:
+- erknm/db/schema.py - схема БД (строки 34-39, 63-67)
+- erknm/db/models.py - методы request_stop() и is_stop_requested()
+- check_column.py - скрипт для проверки и добавления колонки
+
+ТЕХНИЧЕСКИЕ ДЕТАЛИ:
+- Python 3.13
+- PostgreSQL (DATABASE_URL=postgresql://erknm_user:erknm_pass@localhost:5432/erknm)
+- Таблица: sync_runs
+- Колонка: stop_requested BOOLEAN NOT NULL DEFAULT FALSE
+
+
+
+
+
+
+
+
