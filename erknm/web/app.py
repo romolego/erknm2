@@ -1485,9 +1485,84 @@ def api_db_errors():
 def api_settings_get():
     """Получить настройки"""
     try:
+        # Проверяем подключение к БД
+        conn = get_connection()
+        cur = get_cursor(conn)
+        
+        # Проверяем существование таблицы robot_settings
+        try:
+            cur.execute("""
+                SELECT COUNT(*) as cnt 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public' AND table_name = 'robot_settings'
+            """)
+            table_exists = cur.fetchone()['cnt'] > 0
+        except Exception as e:
+            cur.close()
+            conn.close()
+            return jsonify({
+                'success': False, 
+                'error': f'Ошибка проверки таблицы настроек: {str(e)}'
+            }), 500
+        
+        cur.close()
+        conn.close()
+        
+        if not table_exists:
+            # Таблица не существует - возвращаем дефолты и сообщение
+            defaults = {
+                'schedule_enabled': 'false',
+                'schedule_mode': 'daily',
+                'schedule_time': '02:00',
+                'schedule_day_of_week': '1',
+                'schedule_day_of_month': '1',
+                'on_error': 'pause',
+                'retry_policy': 'fixed',
+                'retry_count': '3',
+                'retry_delay_seconds': '60',
+                'throttle_seconds': '10',
+                'process_only_zip': 'true',
+                'unknown_policy': 'skip',
+                'operational_log_enabled': 'true',
+                'sync_order': 'old_to_new',
+                'stop_on_repeats_enabled': 'false',
+                'stop_on_repeats_count': '3'
+            }
+            return jsonify({
+                'success': True, 
+                'settings': defaults,
+                'message': 'Таблица настроек не инициализирована. Используются значения по умолчанию. Выполните инициализацию базы данных.'
+            })
+        
         # Инициализируем настройки по умолчанию если их нет
-        Settings.set_defaults()
-        settings = Settings.get_all()
+        try:
+            Settings.set_defaults()
+            settings = Settings.get_all()
+        except Exception as e:
+            # Если не удалось получить настройки, возвращаем дефолты
+            defaults = {
+                'schedule_enabled': 'false',
+                'schedule_mode': 'daily',
+                'schedule_time': '02:00',
+                'schedule_day_of_week': '1',
+                'schedule_day_of_month': '1',
+                'on_error': 'pause',
+                'retry_policy': 'fixed',
+                'retry_count': '3',
+                'retry_delay_seconds': '60',
+                'throttle_seconds': '10',
+                'process_only_zip': 'true',
+                'unknown_policy': 'skip',
+                'operational_log_enabled': 'true',
+                'sync_order': 'old_to_new',
+                'stop_on_repeats_enabled': 'false',
+                'stop_on_repeats_count': '3'
+            }
+            return jsonify({
+                'success': True,
+                'settings': defaults,
+                'message': f'Не удалось загрузить настройки: {str(e)}. Используются значения по умолчанию.'
+            })
         
         # Заполняем значения по умолчанию если их нет
         defaults = {
@@ -1515,7 +1590,32 @@ def api_settings_get():
         
         return jsonify({'success': True, 'settings': settings})
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        # В случае любой ошибки возвращаем дефолты, чтобы форма все равно отображалась
+        defaults = {
+            'schedule_enabled': 'false',
+            'schedule_mode': 'daily',
+            'schedule_time': '02:00',
+            'schedule_day_of_week': '1',
+            'schedule_day_of_month': '1',
+            'on_error': 'pause',
+            'retry_policy': 'fixed',
+            'retry_count': '3',
+            'retry_delay_seconds': '60',
+            'throttle_seconds': '10',
+            'process_only_zip': 'true',
+            'unknown_policy': 'skip',
+            'operational_log_enabled': 'true',
+            'sync_order': 'old_to_new',
+            'stop_on_repeats_enabled': 'false',
+            'stop_on_repeats_count': '3'
+        }
+        return jsonify({
+            'success': True,
+            'settings': defaults,
+            'error': f'Ошибка при получении настроек: {str(e)}. Используются значения по умолчанию.'
+        })
 
 
 @app.route('/api/settings/save', methods=['POST'])

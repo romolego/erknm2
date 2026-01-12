@@ -166,11 +166,24 @@
         }
         
         .tab-content {
-            display: none !important;
+            display: none;
         }
         
         .tab-content.active {
             display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        /* Дополнительная защита для вкладки настроек */
+        #settings-tab.active {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+        
+        #settings-form {
+            display: grid !important;
         }
         
         .logs-subtab {
@@ -179,10 +192,18 @@
         }
         
         .database-subtab {
-            display: none !important;
+            display: none;
         }
-        
+
         .database-subtab.active {
+            display: block !important;
+        }
+
+        .data-work-subtab {
+            display: none;
+        }
+
+        .data-work-subtab.active {
             display: block !important;
         }
         
@@ -879,6 +900,7 @@
             <button class="tab active" onclick="showTab('runs', event)">Запуски</button>
             <button class="tab" onclick="showTab('logs', event)">Журнал</button>
             <button class="tab" onclick="showTab('database', event)">База данных</button>
+            <button class="tab" onclick="showTab('data-work', event)">Работа с данными</button>
             <button class="tab" onclick="showTab('settings', event)">Настройки робота</button>
         </div>
         
@@ -1054,6 +1076,7 @@
                     </tbody>
                 </table>
             </div>
+            </div>
             
             <div id="database-errors" class="database-subtab">
                 <div class="table-container" style="position: relative;">
@@ -1142,6 +1165,142 @@
                         </table>
                     </div>
                     <div id="xml-contents-pagination" class="pagination"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="data-work-tab" class="tab-content">
+            <div style="margin-bottom: 20px;">
+                <div style="border-bottom: 2px solid #e2e8f0; margin-bottom: 20px;">
+                    <button class="tab logs-subtab active" onclick="showDataWorkSubTab('data')" id="data-work-tab-data">Данные</button>
+                    <button class="tab logs-subtab" onclick="showDataWorkSubTab('widgets')" id="data-work-tab-widgets">Виджеты</button>
+                </div>
+            </div>
+            
+            <div id="data-work-data" class="data-work-subtab active">
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px;">Фильтры</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                        <div>
+                            <label>Тип данных:</label>
+                            <select id="data-work-data-type" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                                <option value="all">Все</option>
+                                <option value="plan">Планы проверок</option>
+                                <option value="inspection">Проверки</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Период с:</label>
+                            <input type="date" id="data-work-date-from" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label>Период до:</label>
+                            <input type="date" id="data-work-date-to" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label>Поиск:</label>
+                            <input type="text" id="data-work-search" placeholder="Поиск по записям..." style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <button class="btn-primary" onclick="loadDataWorkData()">Применить фильтры</button>
+                        <button class="btn-primary" onclick="resetDataWorkFilters()">Сбросить</button>
+                        <button class="btn-primary" onclick="loadDataWorkData()">Обновить</button>
+                        <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+                            <label>Показывать:</label>
+                            <select id="data-work-page-size" onchange="loadDataWorkData()" style="padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                            </select>
+                            <label>Сортировка:</label>
+                            <select id="data-work-sort-by" onchange="loadDataWorkData()" style="padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                                <option value="created_at">Дата создания</option>
+                                <option value="record_date">Дата записи</option>
+                                <option value="id">ID</option>
+                                <option value="record_type">Тип</option>
+                            </select>
+                            <select id="data-work-sort-order" onchange="loadDataWorkData()" style="padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                                <option value="desc">По убыванию</option>
+                                <option value="asc">По возрастанию</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="table-container" style="position: relative;">
+                    <div class="table-loading-overlay" id="data-work-data-loading-overlay">
+                        <div class="loading"></div>
+                        <span id="data-work-data-loading-text">Загрузка...</span>
+                    </div>
+                    <div style="overflow-x: auto; max-width: 100%;">
+                        <table id="data-work-data-table">
+                            <thead>
+                                <tr id="data-work-data-table-header">
+                                    <th>ID</th>
+                                    <th>Тип</th>
+                                    <th>Дата записи</th>
+                                    <th>Дата создания</th>
+                                </tr>
+                            </thead>
+                            <tbody id="data-work-data-table-body">
+                                <tr><td colspan="4">Загрузка...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="data-work-data-pagination" class="pagination" style="margin-top: 15px;"></div>
+                </div>
+            </div>
+            
+            <div id="data-work-widgets" class="data-work-subtab">
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 15px;">Фильтры</h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 15px;">
+                        <div>
+                            <label>Тип данных:</label>
+                            <select id="data-work-widgets-data-type" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                                <option value="all">Все</option>
+                                <option value="plan">Планы проверок</option>
+                                <option value="inspection">Проверки</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Период с:</label>
+                            <input type="date" id="data-work-widgets-date-from" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label>Период до:</label>
+                            <input type="date" id="data-work-widgets-date-to" style="width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px;">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn-primary" onclick="applyDataWorkWidgetsFilters()">Применить</button>
+                        <button class="btn-primary" onclick="resetDataWorkWidgetsFilters()">Сбросить</button>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div class="widget-card" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; background: #f7fafc;">
+                        <h4 style="margin-bottom: 10px; color: #4a5568;">Планы проверок на ближайшие 30 дней</h4>
+                        <p style="color: #718096; font-size: 14px; margin-bottom: 15px;">Отображение планов проверок, запланированных на ближайшие 30 дней</p>
+                        <div style="padding: 20px; text-align: center; color: #a0aec0;">
+                            <p>Виджет в разработке</p>
+                        </div>
+                    </div>
+                    <div class="widget-card" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; background: #f7fafc;">
+                        <h4 style="margin-bottom: 10px; color: #4a5568;">Проверки: итоги за период</h4>
+                        <p style="color: #718096; font-size: 14px; margin-bottom: 15px;">Сводная статистика по проверкам за выбранный период</p>
+                        <div style="padding: 20px; text-align: center; color: #a0aec0;">
+                            <p>Виджет в разработке</p>
+                        </div>
+                    </div>
+                    <div class="widget-card" style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; background: #f7fafc;">
+                        <h4 style="margin-bottom: 10px; color: #4a5568;">Статусы/распределение по категориям</h4>
+                        <p style="color: #718096; font-size: 14px; margin-bottom: 15px;">Распределение записей по статусам и категориям</p>
+                        <div style="padding: 20px; text-align: center; color: #a0aec0;">
+                            <p>Виджет в разработке</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1486,10 +1645,19 @@
         }
         
         function showTab(tabName, event) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            console.log('showTab вызван для:', tabName);
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:showTab',message:'showTab вызвана',data:{tabName:tabName},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+            // #endregion
             
-            // Находим и активируем нужную вкладку
+            // Скрываем все вкладки и убираем активность
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => {
+                t.classList.remove('active');
+                t.style.setProperty('display', 'none', 'important');
+            });
+            
+            // Находим и активируем нужную кнопку вкладки
             if (event && event.target && event.target.classList.contains('tab')) {
                 event.target.classList.add('active');
             } else {
@@ -1498,6 +1666,7 @@
                     'runs': 'Запуски',
                     'logs': 'Журнал',
                     'database': 'База данных',
+                    'data-work': 'Работа с данными',
                     'settings': 'Настройки робота'
                 };
                 const tabs = document.querySelectorAll('.tab');
@@ -1509,17 +1678,52 @@
             }
             
             // Активируем контент вкладки
-            const targetTab = document.getElementById(tabName + '-tab');
-            console.log('showTab: активация вкладки', tabName, 'targetTab найден:', !!targetTab);
+            const targetTabId = tabName + '-tab';
+            const targetTab = document.getElementById(targetTabId);
+            console.log('showTab: активация вкладки', tabName, 'targetTab найден:', !!targetTab, 'ID:', targetTabId);
+            
             if (targetTab) {
+                // Принудительно устанавливаем отображение
                 targetTab.classList.add('active');
-                targetTab.style.display = 'block';
-                console.log('Вкладка активирована, display установлен в block');
-                // Проверяем видимость
-                const computedStyle = window.getComputedStyle(targetTab);
-                console.log('Computed display для', tabName + '-tab:', computedStyle.display);
+                targetTab.style.setProperty('display', 'block', 'important');
+                console.log('Вкладка активирована, display установлен в block (important)');
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:showTab:activated',message:'Вкладка активирована',data:{tabName:tabName,targetTabId:targetTabId,hasActiveClass:targetTab.classList.contains('active')},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'B'})}).catch(()=>{});
+                // #endregion
+                
+                // Проверяем видимость через computed style
+                setTimeout(() => {
+                    const computedStyle = window.getComputedStyle(targetTab);
+                    const rect = targetTab.getBoundingClientRect();
+                    console.log('Проверка видимости:', {
+                        display: computedStyle.display,
+                        visibility: computedStyle.visibility,
+                        opacity: computedStyle.opacity,
+                        width: rect.width,
+                        height: rect.height,
+                        hasActiveClass: targetTab.classList.contains('active')
+                    });
+                // #region agent log
+                const parentEl = targetTab.parentElement;
+                const parentRect = parentEl ? parentEl.getBoundingClientRect() : {width:0,height:0};
+                const parentStyle = parentEl ? window.getComputedStyle(parentEl) : {};
+                fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:showTab:cssCheck',message:'CSS проверка после активации',data:{tabName:tabName,display:computedStyle.display,visibility:computedStyle.visibility,opacity:computedStyle.opacity,width:rect.width,height:rect.height,isHidden:computedStyle.display==='none'||rect.width===0,parentId:parentEl?parentEl.id:'none',parentClass:parentEl?parentEl.className:'none',parentDisplay:parentStyle.display||'unknown',parentWidth:parentRect.width,parentHeight:parentRect.height,childCount:targetTab.children.length,innerHTML:targetTab.innerHTML.substring(0,100)},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'A,F,G'})}).catch(()=>{});
+                // #endregion
+
+                    // Если все еще не видно, применяем более агрессивные методы
+                    if (computedStyle.display === 'none' || rect.width === 0 || rect.height === 0) {
+                        console.error('Вкладка все еще скрыта! Принудительное отображение...');
+                        targetTab.style.setProperty('display', 'block', 'important');
+                        targetTab.style.setProperty('visibility', 'visible', 'important');
+                        targetTab.style.setProperty('opacity', '1', 'important');
+                        targetTab.classList.add('active');
+                    }
+                }, 10);
             } else {
-                console.error('Вкладка не найдена:', tabName + '-tab');
+                console.error('Вкладка не найдена в DOM:', targetTabId);
+                // Пробуем найти все tab-content для отладки
+                const allTabs = document.querySelectorAll('.tab-content');
+                console.error('Все найденные .tab-content:', Array.from(allTabs).map(t => t.id));
             }
             
             // Загружаем данные для вкладки
@@ -1529,30 +1733,72 @@
                 currentLogsStage = 'all';
                 showLogsSubTab('all');
             } else if (tabName === 'database') {
-                // При открытии "База данных" активируем вкладку "Архивы/файлы" по умолчанию
-                if (!currentDatabaseSubTab || currentDatabaseSubTab === 'archives') {
+                // При открытии "База данных" активируем под-вкладку (по умолчанию "Архивы/файлы")
+                if (!currentDatabaseSubTab) {
                     currentDatabaseSubTab = 'archives';
                     showDatabaseSubTab('archives');
                 } else {
-                    // Если уже выбрана другая подвкладка, просто загружаем данные
-                loadDatabase();
+                    // Если уже выбрана другая под-вкладка, активируем её и загружаем данные
+                    showDatabaseSubTab(currentDatabaseSubTab);
+                }
+            } else if (tabName === 'data-work') {
+                // При открытии "Работа с данными" активируем под-вкладку (по умолчанию "Данные")
+                if (!currentDataWorkSubTab) {
+                    currentDataWorkSubTab = 'data';
+                    showDataWorkSubTab('data');
+                } else {
+                    showDataWorkSubTab(currentDataWorkSubTab);
                 }
             } else if (tabName === 'settings') {
-                console.log('Загрузка настроек...');
-                loadSettings();
-                // Дополнительная проверка видимости
+                console.log('Обработка вкладки settings...');
+                
+                // Дополнительная проверка для settings
+                const settingsTab = document.getElementById('settings-tab');
+                if (!settingsTab) {
+                    console.error('settings-tab НЕ НАЙДЕНА в DOM!');
+                    return;
+                }
+                
+                console.log('settings-tab найдена, принудительно активируем...');
+                settingsTab.classList.add('active');
+                settingsTab.style.setProperty('display', 'block', 'important');
+                settingsTab.style.setProperty('visibility', 'visible', 'important');
+                
+                // Проверяем форму настроек
+                const settingsForm = document.getElementById('settings-form');
+                if (settingsForm) {
+                    settingsForm.style.setProperty('display', 'grid', 'important');
+                    console.log('Форма настроек найдена и показана');
+                } else {
+                    console.error('settings-form НЕ НАЙДЕНА в DOM!');
+                }
+                
+                // Загружаем настройки с небольшой задержкой, чтобы DOM успел обновиться
                 setTimeout(() => {
-                    const settingsTab = document.getElementById('settings-tab');
-                    if (settingsTab) {
-                        if (!settingsTab.classList.contains('active')) {
-                            console.warn('Вкладка settings не активна после загрузки! Активируем...');
+                    loadSettings();
+                }, 50);
+                
+                // Финальная проверка через несколько задержек
+                [100, 200, 500].forEach(delay => {
+                    setTimeout(() => {
+                        const computedStyle = window.getComputedStyle(settingsTab);
+                        const rect = settingsTab.getBoundingClientRect();
+                        
+                        if (computedStyle.display === 'none' || rect.width === 0) {
+                            console.warn(`Проверка через ${delay}ms: вкладка все еще скрыта, принудительно показываем...`);
+                            settingsTab.style.setProperty('display', 'block', 'important');
+                            settingsTab.style.setProperty('visibility', 'visible', 'important');
                             settingsTab.classList.add('active');
-                            settingsTab.style.display = 'block';
+                            
+                            // Также принудительно показываем форму
+                            if (settingsForm) {
+                                settingsForm.style.setProperty('display', 'grid', 'important');
+                            }
+                        } else {
+                            console.log(`Проверка через ${delay}ms: вкладка видна (${rect.width}x${rect.height})`);
                         }
-                        const style = window.getComputedStyle(settingsTab);
-                        console.log('Финальная проверка settings-tab - Display:', style.display);
-                    }
-                }, 100);
+                    }, delay);
+                });
             }
         }
         
@@ -2256,6 +2502,13 @@
             loadLogs();
             loadRuntimeStatus();
             loadRuntimeEvents();
+            
+            // Если активна вкладка "База данных", обновляем данные для текущей под-вкладки
+            const databaseTab = document.getElementById('database-tab');
+            if (databaseTab && databaseTab.classList.contains('active')) {
+                loadDatabase();
+            }
+            
             showStatus('Данные обновлены', 'success');
         }
         
@@ -2306,8 +2559,21 @@
             currentDatabaseSubTab = tabName;
             console.log('currentDatabaseSubTab установлен в:', currentDatabaseSubTab);
             
-            // Скрываем все подвкладки
-            document.querySelectorAll('.database-subtab').forEach(t => t.classList.remove('active'));
+            // Убеждаемся, что главная вкладка "База данных" активна и видна
+            const databaseTab = document.getElementById('database-tab');
+            if (databaseTab) {
+                databaseTab.classList.add('active');
+                databaseTab.style.setProperty('display', 'block', 'important');
+            }
+            
+            // Скрываем все подвкладки, но НЕ ту, которую хотим показать
+            document.querySelectorAll('.database-subtab').forEach(t => {
+                const tabId = t.id.replace('database-', '');
+                if (tabId !== tabName) {
+                    t.classList.remove('active');
+                    t.style.setProperty('display', 'none', 'important');
+                }
+            });
             document.querySelectorAll('[id^="db-tab-"]').forEach(t => t.classList.remove('active'));
             
             // Показываем выбранную подвкладку
@@ -2319,6 +2585,9 @@
             
             if (subTabElement) {
                 subTabElement.classList.add('active');
+                subTabElement.style.setProperty('display', 'block', 'important');
+                subTabElement.style.setProperty('visibility', 'visible', 'important');
+                subTabElement.style.setProperty('opacity', '1', 'important');
                 console.log('Подвкладка активирована:', subTabElement.id, 'Имеет класс active:', subTabElement.classList.contains('active'));
             } else {
                 console.error('Подвкладка не найдена: database-' + tabName);
@@ -2340,9 +2609,46 @@
         
         // Инициализация: при загрузке страницы, если открыта вкладка "База данных", активируем "Архивы/файлы"
         document.addEventListener('DOMContentLoaded', function() {
+            // Проверяем и активируем вкладку базы данных если она активна
             const databaseTab = document.getElementById('database-tab');
             if (databaseTab && databaseTab.classList.contains('active')) {
                 showDatabaseSubTab('archives');
+            }
+            
+            // Проверяем и активируем вкладку настроек если она активна
+            const settingsTab = document.getElementById('settings-tab');
+            if (settingsTab && settingsTab.classList.contains('active')) {
+                console.log('DOMContentLoaded: settings-tab активна, принудительно показываем...');
+                settingsTab.style.setProperty('display', 'block', 'important');
+                settingsTab.style.setProperty('visibility', 'visible', 'important');
+                
+                const settingsForm = document.getElementById('settings-form');
+                if (settingsForm) {
+                    settingsForm.style.setProperty('display', 'grid', 'important');
+                }
+                
+                // Загружаем настройки
+                setTimeout(() => {
+                    loadSettings();
+                }, 100);
+            }
+            
+            // Дополнительная проверка: если settings-tab существует, убеждаемся что она может отображаться
+            if (settingsTab) {
+                console.log('DOMContentLoaded: settings-tab найдена, проверяем доступность...');
+                // Принудительно устанавливаем стили для обеспечения видимости
+                const style = window.getComputedStyle(settingsTab);
+                if (style.display === 'none' && !settingsTab.classList.contains('active')) {
+                    // Вкладка скрыта и не активна - это нормально
+                    console.log('settings-tab скрыта (не активна) - это нормально');
+                } else if (settingsTab.classList.contains('active') && style.display === 'none') {
+                    // Вкладка должна быть видна, но скрыта - исправляем
+                    console.warn('settings-tab активна но скрыта - исправляем!');
+                    settingsTab.style.setProperty('display', 'block', 'important');
+                    settingsTab.style.setProperty('visibility', 'visible', 'important');
+                }
+            } else {
+                console.error('DOMContentLoaded: settings-tab НЕ НАЙДЕНА в DOM!');
             }
         });
         
@@ -3229,8 +3535,282 @@
             }
         }
         
-        // ==================== Функции для вкладки "Настройки" ====================
+        // ==================== Функции для вкладки "Работа с данными" ====================
         
+        let currentDataWorkSubTab = 'data';
+        let currentDataWorkOffset = 0;
+        let currentDataWorkLimit = 50;
+        
+        function showDataWorkSubTab(tabName) {
+            console.log('showDataWorkSubTab вызвана с:', tabName);
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:showDataWorkSubTab',message:'showDataWorkSubTab вызвана',data:{tabName:tabName},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D,E'})}).catch(()=>{});
+            // #endregion
+            currentDataWorkSubTab = tabName;
+
+            // Убеждаемся, что главная вкладка "Работа с данными" активна
+            const dataWorkTab = document.getElementById('data-work-tab');
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:showDataWorkSubTab:dataWorkTab',message:'Проверка dataWorkTab',data:{found:!!dataWorkTab,hasActiveClass:dataWorkTab?dataWorkTab.classList.contains('active'):false},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
+            if (dataWorkTab && !dataWorkTab.classList.contains('active')) {
+                dataWorkTab.classList.add('active');
+                dataWorkTab.style.setProperty('display', 'block', 'important');
+            }
+
+            // Скрываем все подвкладки, кроме целевой (по аналогии с showDatabaseSubTab)
+            document.querySelectorAll('.data-work-subtab').forEach(t => {
+                const subTabId = t.id.replace('data-work-', '');
+                if (subTabId !== tabName) {
+                    t.classList.remove('active');
+                    t.style.setProperty('display', 'none', 'important');
+                }
+            });
+            document.querySelectorAll('[id^="data-work-tab-"]').forEach(t => t.classList.remove('active'));
+
+            // Показываем выбранную подвкладку
+            const subTabElement = document.getElementById('data-work-' + tabName);
+            const tabButton = document.getElementById('data-work-tab-' + tabName);
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:showDataWorkSubTab:subTabElement',message:'Проверка subTabElement',data:{subTabId:'data-work-'+tabName,found:!!subTabElement,tabButtonFound:!!tabButton},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+            // #endregion
+
+            if (subTabElement) {
+                subTabElement.classList.add('active');
+                subTabElement.style.setProperty('display', 'block', 'important');
+            }
+            if (tabButton) {
+                tabButton.classList.add('active');
+            }
+
+            // Загружаем данные для подвкладки
+            if (tabName === 'data') {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:showDataWorkSubTab:beforeLoadData',message:'Вызов loadDataWorkData',data:{tabName:tabName},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+                // #endregion
+                loadDataWorkData();
+            }
+        }
+        
+        function getCurrentDataWorkFilters() {
+            return {
+                record_type: document.getElementById('data-work-data-type')?.value || 'all',
+                date_from: document.getElementById('data-work-date-from')?.value || '',
+                date_to: document.getElementById('data-work-date-to')?.value || '',
+                search: document.getElementById('data-work-search')?.value || '',
+                limit: parseInt(document.getElementById('data-work-page-size')?.value || '50'),
+                offset: currentDataWorkOffset,
+                sort_by: document.getElementById('data-work-sort-by')?.value || 'created_at',
+                sort_order: document.getElementById('data-work-sort-order')?.value || 'desc'
+            };
+        }
+        
+        function resetDataWorkFilters() {
+            document.getElementById('data-work-data-type').value = 'all';
+            document.getElementById('data-work-date-from').value = '';
+            document.getElementById('data-work-date-to').value = '';
+            document.getElementById('data-work-search').value = '';
+            document.getElementById('data-work-page-size').value = '50';
+            document.getElementById('data-work-sort-by').value = 'created_at';
+            document.getElementById('data-work-sort-order').value = 'desc';
+            currentDataWorkOffset = 0;
+            loadDataWorkData();
+        }
+        
+        async function loadDataWorkData() {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:loadDataWorkData:start',message:'loadDataWorkData начата',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            const overlay = document.getElementById('data-work-data-loading-overlay');
+            const loadingText = document.getElementById('data-work-data-loading-text');
+            const tbody = document.getElementById('data-work-data-table-body');
+            const table = document.getElementById('data-work-data-table');
+
+            if (!tbody || !table) {
+                console.error('Таблица не найдена');
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:loadDataWorkData:error',message:'Таблица не найдена',data:{tbodyFound:!!tbody,tableFound:!!table},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                return;
+            }
+
+            if (overlay) overlay.classList.add('active');
+            if (loadingText) loadingText.textContent = 'Загрузка...';
+
+            try {
+                const filters = getCurrentDataWorkFilters();
+
+                // Формируем URL с параметрами
+                const params = new URLSearchParams();
+                if (filters.record_type !== 'all') params.append('record_type', filters.record_type);
+                if (filters.date_from) params.append('date_from', filters.date_from);
+                if (filters.date_to) params.append('date_to', filters.date_to);
+                if (filters.search) params.append('search', filters.search);
+                params.append('limit', filters.limit);
+                params.append('offset', filters.offset);
+                params.append('sort_by', filters.sort_by);
+                params.append('sort_order', filters.sort_order);
+
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:loadDataWorkData:fetch',message:'Запрос API',data:{url:`/api/db/parsed-records?${params}`},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
+                const response = await fetch(`/api/db/parsed-records?${params}`);
+                const data = await response.json();
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:loadDataWorkData:response',message:'Ответ API',data:{success:data.success,itemsCount:data.items?data.items.length:0,total:data.total,error:data.error||null},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Ошибка загрузки данных');
+                }
+                
+                const records = data.items || data.records || [];
+                const total = data.total || 0;
+                
+                if (records.length === 0) {
+                    // Определяем количество колонок из заголовка
+                    const thead = table.querySelector('thead');
+                    const headerRow = thead ? thead.querySelector('tr') : null;
+                    const columnCount = headerRow ? headerRow.querySelectorAll('th').length : 4;
+                    
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="${columnCount}" style="text-align: center; padding: 40px; color: #718096;">
+                                <div>Данные отсутствуют</div>
+                                <div style="font-size: 12px; color: #a0aec0; margin-top: 10px;">
+                                    ${total > 0 ? 'Нет данных по текущим фильтрам' : 'Нет обработанных записей. Выполните синхронизацию или обновление.'}
+                                </div>
+                            </td>
+                        </tr>`;
+                    document.getElementById('data-work-data-pagination').innerHTML = '';
+                } else {
+                    // Собираем все уникальные ключи из всех записей на странице
+                    const allKeys = new Set();
+                    records.forEach(record => {
+                        if (record.payload_json) {
+                            Object.keys(record.payload_json).forEach(key => allKeys.add(key));
+                        }
+                    });
+                    const payloadKeys = Array.from(allKeys).sort();
+                    
+                    // Базовое количество колонок: ID, Тип, Дата записи, Дата создания
+                    const baseColumnCount = 4;
+                    const totalColumnCount = baseColumnCount + payloadKeys.length;
+                    
+                    // Формируем заголовок таблицы
+                    let headerHTML = '<tr><th>ID</th><th>Тип</th>';
+                    if (payloadKeys.length > 0) {
+                        payloadKeys.forEach(key => {
+                            headerHTML += `<th>${escapeHtml(key)}</th>`;
+                        });
+                    }
+                    headerHTML += '<th>Дата записи</th><th>Дата создания</th></tr>';
+                    
+                    const thead = table.querySelector('thead');
+                    if (thead) {
+                        thead.innerHTML = headerHTML;
+                    }
+                    
+                    // Формируем строки таблицы
+                    const rowsHTML = records.map(record => {
+                        let rowHTML = `<tr>
+                            <td>${record.id}</td>
+                            <td>${escapeHtml(record.record_type || '-')}</td>`;
+                        
+                        if (payloadKeys.length > 0) {
+                            payloadKeys.forEach(key => {
+                                const value = record.payload_json && record.payload_json[key];
+                                let displayValue = '-';
+                                if (value !== null && value !== undefined) {
+                                    if (typeof value === 'object') {
+                                        displayValue = JSON.stringify(value);
+                                    } else {
+                                        displayValue = String(value);
+                                    }
+                                    if (displayValue.length > 100) {
+                                        displayValue = displayValue.substring(0, 100) + '...';
+                                    }
+                                }
+                                rowHTML += `<td title="${escapeHtml(String(value || ''))}">${escapeHtml(displayValue)}</td>`;
+                            });
+                        }
+                        
+                        const recordDate = record.record_date ? new Date(record.record_date).toLocaleDateString('ru-RU') : '-';
+                        const createdDate = record.created_at ? new Date(record.created_at).toLocaleString('ru-RU') : '-';
+                        rowHTML += `<td>${recordDate}</td><td>${createdDate}</td></tr>`;
+                        return rowHTML;
+                    }).join('');
+                    
+                    tbody.innerHTML = rowsHTML;
+                    
+                    // Пагинация
+                    renderDataWorkPagination(total, filters.limit, filters.offset);
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки данных:', error);
+                // Определяем количество колонок из заголовка
+                const thead = table.querySelector('thead');
+                const headerRow = thead ? thead.querySelector('tr') : null;
+                const columnCount = headerRow ? headerRow.querySelectorAll('th').length : 4;
+                
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="${columnCount}" style="text-align: center; padding: 40px; color: #f56565;">
+                            <div>Ошибка загрузки данных</div>
+                            <div style="font-size: 12px; color: #a0aec0; margin-top: 10px;">${escapeHtml(error.message)}</div>
+                        </td>
+                    </tr>`;
+            } finally {
+                if (overlay) overlay.classList.remove('active');
+            }
+        }
+        
+        function renderDataWorkPagination(total, limit, offset) {
+            const paginationDiv = document.getElementById('data-work-data-pagination');
+            if (!paginationDiv) return;
+            
+            const totalPages = Math.ceil(total / limit);
+            const currentPage = Math.floor(offset / limit) + 1;
+            
+            if (totalPages <= 1) {
+                paginationDiv.innerHTML = `<div style="text-align: center; padding: 10px; color: #718096;">Всего записей: ${total}</div>`;
+                return;
+            }
+            
+            let paginationHTML = `<div style="display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap;">`;
+            paginationHTML += `<div style="padding: 5px 10px; color: #4a5568;">Всего: ${total}</div>`;
+            
+            if (currentPage > 1) {
+                paginationHTML += `<button class="btn-primary" onclick="dataWorkGoToPage(${currentPage - 1}, ${limit})" style="padding: 5px 15px;">Предыдущая</button>`;
+            }
+            
+            paginationHTML += `<div style="padding: 5px 10px; color: #4a5568;">Страница ${currentPage} из ${totalPages}</div>`;
+            
+            if (currentPage < totalPages) {
+                paginationHTML += `<button class="btn-primary" onclick="dataWorkGoToPage(${currentPage + 1}, ${limit})" style="padding: 5px 15px;">Следующая</button>`;
+            }
+            
+            paginationHTML += `</div>`;
+            paginationDiv.innerHTML = paginationHTML;
+        }
+        
+        function dataWorkGoToPage(page, pageSize) {
+            currentDataWorkOffset = (page - 1) * pageSize;
+            loadDataWorkData();
+        }
+        
+        function applyDataWorkWidgetsFilters() {
+            // Заглушка для применения фильтров виджетов
+            console.log('Фильтры виджетов применены');
+        }
+        
+        function resetDataWorkWidgetsFilters() {
+            document.getElementById('data-work-widgets-data-type').value = 'all';
+            document.getElementById('data-work-widgets-date-from').value = '';
+            document.getElementById('data-work-widgets-date-to').value = '';
+        }
+        
+        // ==================== Функции для вкладки "Настройки" ====================
+
         function updateScheduleFields() {
             const mode = document.getElementById('schedule_mode')?.value || 'daily';
             const dayWeekContainer = document.getElementById('schedule-day-of-week-container');
@@ -3259,48 +3839,108 @@
         }
         
         async function loadSettings() {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:loadSettings:start',message:'loadSettings начата',data:{},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'E'})}).catch(()=>{});
+            // #endregion
+            const statusDiv = document.getElementById('settings-status');
+
             try {
+                // Очищаем предыдущие сообщения
+                if (statusDiv) {
+                    statusDiv.innerHTML = '';
+                }
+
+                // Убеждаемся, что вкладка видна
+                const settingsTab = document.getElementById('settings-tab');
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:loadSettings:tab',message:'Проверка settingsTab',data:{found:!!settingsTab},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'D'})}).catch(()=>{});
+                // #endregion
+                if (settingsTab) {
+                    settingsTab.style.display = 'block';
+                    settingsTab.classList.add('active');
+                }
+
                 const response = await fetch('/api/settings/get');
                 const data = await response.json();
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/5a9ef78c-7487-4c3d-ae97-9d1bd76885f4',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:loadSettings:response',message:'Ответ API settings',data:{success:data.success,hasSettings:!!data.settings,error:data.error||null},timestamp:Date.now(),sessionId:'debug-session',hypothesisId:'C'})}).catch(()=>{});
+                // #endregion
                 
-                if (data.success) {
+                if (data.success && data.settings) {
                     const settings = data.settings;
-                    document.getElementById('schedule_enabled').checked = settings.schedule_enabled === 'true';
-                    document.getElementById('schedule_mode').value = settings.schedule_mode || 'daily';
-                    document.getElementById('schedule_time').value = settings.schedule_time || '02:00';
-                    document.getElementById('schedule_day_of_week').value = settings.schedule_day_of_week || '1';
-                    document.getElementById('schedule_day_of_month').value = settings.schedule_day_of_month || '1';
-                    document.getElementById('on_error').value = settings.on_error || 'pause';
-                    document.getElementById('retry_policy').value = settings.retry_policy || 'fixed';
-                    document.getElementById('retry_count').value = settings.retry_count || '3';
-                    document.getElementById('retry_delay_seconds').value = settings.retry_delay_seconds || '60';
-                    document.getElementById('throttle_seconds').value = settings.throttle_seconds || '10';
-                    document.getElementById('process_only_zip').checked = settings.process_only_zip !== 'false';
-                    document.getElementById('unknown_policy').value = settings.unknown_policy || 'skip';
                     
-                    // Параметры синхронизации
-                    document.getElementById('sync_order').value = settings.sync_order || 'old_to_new';
-                    const stopOnRepeatsEnabled = document.getElementById('stop_on_repeats_enabled');
-                    if (stopOnRepeatsEnabled) {
-                        stopOnRepeatsEnabled.checked = settings.stop_on_repeats_enabled === 'true';
+                    // Безопасно заполняем форму с проверкой существования элементов
+                    const setValue = (id, value) => {
+                        const elem = document.getElementById(id);
+                        if (elem) {
+                            if (elem.type === 'checkbox') {
+                                elem.checked = value === 'true' || value === true;
+                            } else {
+                                elem.value = value || '';
+                            }
+                        }
+                    };
+                    
+                    const setChecked = (id, checked) => {
+                        const elem = document.getElementById(id);
+                        if (elem && elem.type === 'checkbox') {
+                            elem.checked = checked === 'true' || checked === true;
+                        }
+                    };
+                    
+                    // Заполняем все поля настроек
+                    setChecked('schedule_enabled', settings.schedule_enabled || 'false');
+                    setValue('schedule_mode', settings.schedule_mode || 'daily');
+                    setValue('schedule_time', settings.schedule_time || '02:00');
+                    setValue('schedule_day_of_week', settings.schedule_day_of_week || '1');
+                    setValue('schedule_day_of_month', settings.schedule_day_of_month || '1');
+                    setValue('on_error', settings.on_error || 'pause');
+                    setValue('retry_policy', settings.retry_policy || 'fixed');
+                    setValue('retry_count', settings.retry_count || '3');
+                    setValue('retry_delay_seconds', settings.retry_delay_seconds || '60');
+                    setValue('throttle_seconds', settings.throttle_seconds || '10');
+                    setChecked('process_only_zip', settings.process_only_zip !== 'false');
+                    setValue('unknown_policy', settings.unknown_policy || 'skip');
+                    setValue('sync_order', settings.sync_order || 'old_to_new');
+                    setChecked('stop_on_repeats_enabled', settings.stop_on_repeats_enabled || 'false');
+                    setValue('stop_on_repeats_count', settings.stop_on_repeats_count || '3');
+                    setChecked('operational_log_enabled', settings.operational_log_enabled !== 'false');
+                    
+                    // Обновляем видимость полей
+                    if (typeof updateStopOnRepeatsFields === 'function') {
                         updateStopOnRepeatsFields();
                     }
-                    document.getElementById('stop_on_repeats_count').value = settings.stop_on_repeats_count || '3';
-                    
-                    // Настройка оперативного лога
-                    const operationalLogEnabled = document.getElementById('operational_log_enabled');
-                    if (operationalLogEnabled) {
-                        operationalLogEnabled.checked = settings.operational_log_enabled !== 'false';
+                    if (typeof updateScheduleFields === 'function') {
+                        updateScheduleFields();
+                    }
+                    if (typeof updateRuntimeLogVisibility === 'function') {
                         updateRuntimeLogVisibility();
                     }
+                } else {
+                    // API вернул ошибку или пустые данные
+                    const errorMsg = data.error || 'Настройки не найдены. Используются значения по умолчанию.';
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<div class="status info">' + escapeHtml(errorMsg) + '</div>';
+                    }
+                    console.warn('Настройки не загружены:', errorMsg);
                     
-                    // Обновляем видимость полей расписания
-                    updateScheduleFields();
+                    // Устанавливаем значения по умолчанию
+                    if (typeof updateScheduleFields === 'function') {
+                        updateScheduleFields();
+                    }
                 }
             } catch (error) {
                 console.error('Ошибка загрузки настроек:', error);
-                // Устанавливаем дефолты при ошибке
-                updateScheduleFields();
+                
+                // Показываем ошибку пользователю
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div class="status error">Ошибка загрузки настроек: ' + escapeHtml(error.message || 'Неизвестная ошибка') + '. Проверьте подключение к серверу и консоль браузера.</div>';
+                }
+                
+                // Все равно устанавливаем дефолты и показываем форму
+                if (typeof updateScheduleFields === 'function') {
+                    updateScheduleFields();
+                }
             }
         }
         
